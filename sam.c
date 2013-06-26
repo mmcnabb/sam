@@ -2,7 +2,7 @@
  *
  * Based on the original hardware synthesizer designed and built by Pete Samson
  *
- * Written by William Schottsteadt
+ * Written by William Schottstaedt
  * With help from Michael McNabb
  * 
  * 
