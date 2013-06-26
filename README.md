@@ -14,3 +14,4 @@ http://en.wikipedia.org/wiki/Peter_Samson
 
 https://ccrma.stanford.edu/~jos/kna/Experiences_Samson_Box.html
 
+http://www.jstor.org/discover/10.2307/3679693?uid=3739560&uid=2&uid=4&uid=3739256&sid=21102457420857
