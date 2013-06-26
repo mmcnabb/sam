@@ -62,7 +62,7 @@
 #include <stdbool.h>
 #include <math.h>
 #include <stdint.h>
-#ifdef __LINUX__
+#ifdef __linux__
   #include <asm/byteorder.h>
   #define OSSwapBigToHostInt16 __be16_to_cpu
   #define OSSwapBigToHostInt32 __be32_to_cpu
