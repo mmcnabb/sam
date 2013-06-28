@@ -62,12 +62,12 @@
 #include <stdbool.h>
 #include <math.h>
 #include <stdint.h>
-#ifdef __linux__
-  #include <asm/byteorder.h>
-  #define OSSwapBigToHostInt16 __be16_to_cpu
-  #define OSSwapBigToHostInt32 __be32_to_cpu
+#if defined(__linux__)
+#include <asm/byteorder.h>
+#define OSSwapBigToHostInt16 __be16_to_cpu
+#define OSSwapBigToHostInt32 __be32_to_cpu
 #else
-  #include <libkern/OSByteOrder.h>
+#include <libkern/OSByteOrder.h>
 #endif
 
 #define TOTAL_SAMPLES -1
