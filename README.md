@@ -7,7 +7,7 @@ The emulator code was written by William Schottstaedt, with help from Michael Mc
 
 The emulator accepts binary input command files from the era, (possibly along with audio files for processing), and generates a 4-channel file of 32-bit floating point samples.
 
-As sample input file, gender.sam, is included.
+A sample input file, gender.sam, is included.
 
 http://en.wikipedia.org/wiki/Peter_Samson
 
