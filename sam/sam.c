@@ -2,7 +2,7 @@
  *
  * Based on the original hardware synthesizer designed and built by Pete Samson
  *
- * Written by William Schottstaedt
+ * Written by William Schottsteadt
  * With help from Michael McNabb
  * 
  * 
@@ -62,13 +62,7 @@
 #include <stdbool.h>
 #include <math.h>
 #include <stdint.h>
-#if defined(__linux__)
-#include <asm/byteorder.h>
-#define OSSwapBigToHostInt16 __be16_to_cpu
-#define OSSwapBigToHostInt32 __be32_to_cpu
-#else
 #include <libkern/OSByteOrder.h>
-#endif
 
 #define TOTAL_SAMPLES -1
 
@@ -145,7 +139,8 @@ static delay *dlys[DELAYS];
 static double delay_memory[DELAY_MEMORY_SIZE];
 static float dac_out[4], dac_out_peak[4];
 
-static int tick, pass, DX, processing_ticks, highest_tick_per_pass, samples = 0, srate = 1, total_commands = 0, current_command = 0;
+static int tick, pass, DX, processing_ticks, highest_tick_per_pass, samples = 0, srate = 1, current_command = 0;
+static unsigned long total_commands = 0;
 
 FILE *snd_file        = NULL; /* for now just riff/wave quad, but srate depends on tick setting */
 FILE *read_data_file  = NULL;
@@ -373,6 +368,8 @@ static void set_osc_run(int gen, int RRRR)
 	g = gens[gen];
 	/* RRRREESSSS */
 	g->GMODE = (g->GMODE & 0x3f) | (RRRR << 6);
+    g->f_GK = 0.0; // reset phase. mmm - 06/2026
+    g->GK = 0;
 }
 
 /*				 osc. run?  env. run?  add to sum?
@@ -536,6 +533,8 @@ static void process_gen(int gen)
 				OscOut13 = 0.5;
 			else OscOut13 = 0.0;
 			break;
+        default:
+            OscOut13 = 0.0;
     }
 	
 	CurAmp12 = CurAmp24;
@@ -629,7 +628,7 @@ static void process_gen(int gen)
 			if (read_data_file)
 			{
 				float read_data_value;
-				
+
 				switch (read_data_format) {
 					case SND_FORMAT_LINEAR_16: {
 						short val;
@@ -641,6 +640,8 @@ static void process_gen(int gen)
 					case SND_FORMAT_FLOAT:
 						fread((void *)(&read_data_value), 4, 1, read_data_file);
 						break;
+                    default:
+                        read_data_value = 0.0;
 				}
 				gen_outs[OutSum6] = OscOut13 + read_data_value;
 				/* 
@@ -855,7 +856,6 @@ static void process_mod(int mod)
 			 *          if B*M1 (integer multiply, low-order 20 bits of product
 			 *          used; overflow ignored) is not 0, L1 := S
 			 */
-			
 			/* IS = (m->L0 + (m->L1 * m->M0)) & 0xfffff; */
 			/* I'm getting an immediate fixed-point from the SAM files that used triggered noise! */
 			/* they used the M0 seed of 359035904, (L1: 204282), which immediately cycles. */
@@ -1559,7 +1559,7 @@ static void ticks_command(int cmd)
 			0, 0, 0, 0};
 			header_info[15] = srate;
 			// mmm - generate output filename based on input filename
-			int len = strlen(filename);
+			unsigned long len = strlen(filename);
 			output_filename = malloc(len+1);
 			strcpy(output_filename, filename);
 			char *dot = strchr(output_filename, '.');
@@ -2802,7 +2802,9 @@ int main(int argc, char **argv)
 			fseek(sam_file, 0, SEEK_END);
 			size = ftell(sam_file);
 			rewind(sam_file);
-			
+
+            fprintf(stdout, "\nReading %s\n", filename);
+
 			if (size <= 0)
 			{
 				fprintf(stderr, "%s is empty\n", filename);
