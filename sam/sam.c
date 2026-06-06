@@ -2,7 +2,7 @@
  *
  * Based on the original hardware synthesizer designed and built by Pete Samson
  *
- * Written by William Schottsteadt
+ * Written by William Schottstaedt
  * With help from Michael McNabb
  * 
  * 
@@ -368,8 +368,6 @@ static void set_osc_run(int gen, int RRRR)
 	g = gens[gen];
 	/* RRRREESSSS */
 	g->GMODE = (g->GMODE & 0x3f) | (RRRR << 6);
-    g->f_GK = 0.0; // reset phase. mmm - 06/2026
-    g->GK = 0;
 }
 
 /*				 osc. run?  env. run?  add to sum?
@@ -459,7 +457,7 @@ static void process_gen(int gen)
 #define ShiftOut  g->GS
 
 	generator *g;
-	double fm, FmPhase20, Phase20, SinAdr, CscAdr, TblOut13, OscOut13, CurAmp12, NewAmp12, Env12, temp;
+	double fm, FmPhase20, Phase20, SinAdr, CscAdr, TblOut13, OscOut13=0, CurAmp12, NewAmp12, Env12, temp;
 	bool didReadData = 0;
 	
 	g = gens[gen];
@@ -533,8 +531,6 @@ static void process_gen(int gen)
 				OscOut13 = 0.5;
 			else OscOut13 = 0.0;
 			break;
-        default:
-            OscOut13 = 0.0;
     }
 	
 	CurAmp12 = CurAmp24;
@@ -618,6 +614,7 @@ static void process_gen(int gen)
 		}
 		else 
 		{
+
 			didReadData = 1;
 			/* read-data: assume we're reading floats from a raw file */
 			if (g->rd_samp == 0) {
@@ -627,7 +624,7 @@ static void process_gen(int gen)
 			
 			if (read_data_file)
 			{
-				float read_data_value;
+				float read_data_value = 0.0;
 
 				switch (read_data_format) {
 					case SND_FORMAT_LINEAR_16: {
@@ -640,8 +637,6 @@ static void process_gen(int gen)
 					case SND_FORMAT_FLOAT:
 						fread((void *)(&read_data_value), 4, 1, read_data_file);
 						break;
-                    default:
-                        read_data_value = 0.0;
 				}
 				gen_outs[OutSum6] = OscOut13 + read_data_value;
 				/* 
@@ -861,11 +856,15 @@ static void process_mod(int mod)
 			/* they used the M0 seed of 359035904, (L1: 204282), which immediately cycles. */
 			/* perhaps the spec is wrong... -- I'll try taking the middle bits */
 			
-			IS = (m->L0 + ((m->L1 * m->M0) >> 10)) & 0xfffff;
+//            IS = (m->L0 + ((m->L1 * m->M0) >> 10)) & 0xfffff;
+            IS = (m->L0 + (m->L1 * m->M0)) & 0xfffff;
 			mod_write(m->MSUM, TWOS_20_TO_DOUBLE(IS));
-			if ((B != 0.0) && 
-				(m->M1 != 0))
-				m->L1 = IS;
+//			if ((B != 0.0) && 
+//				(m->M1 != 0))
+//				m->L1 = IS;
+            long IB = DOUBLE_TO_TWOS_20(B);
+            if (((IB * m->M1) & 0xfffff) != 0)
+                m->L1 = IS;
 			break;
 			
 		case M_LATCH:
@@ -1504,6 +1503,7 @@ static void ticks_command(int cmd)
 		if (Q == 0)
 			processing_ticks = data + 1;  // mmm - data is highest numbered processing tick per pass, so processing_ticks is 1 greater.
 		else {
+            double fsrate = (double)srate;
 			if (srate <= 1) { // mmm - srate can now be set from the command line in certain cases. I had some weird tick settings for some reason.
 				// mmm - highest_tick_per_pass is actually being set here to the max *number* of ticks per pass, including overhead
 				highest_tick_per_pass = data + 2; 
@@ -1520,12 +1520,13 @@ static void ticks_command(int cmd)
 				//if (highest_tick_per_pass > GENERATORS)
 				//	highest_tick_per_pass = GENERATORS; // mmm - could it not be higher in some cases (Gens + Mods + overhead)?
 				
-				srate = (int)(1000000000.0 / (double)(highest_tick_per_pass * 195));
+                fsrate = (int)(1000000000.0 / (double)(highest_tick_per_pass * 195));
+                srate = (int)round(fsrate);
 			}
 			else {
 				highest_tick_per_pass = (1000000000.0 / (double)srate / 195.0);
 			}
-			printf("srate = %d, highest tick per pass = %d\n", srate, highest_tick_per_pass);
+			printf("srate = %f, %d, highest tick per pass = %d\n", fsrate, srate, highest_tick_per_pass);
 		}
     }
 	
@@ -2016,9 +2017,11 @@ static void gmode_command(int cmd)
 		g->GMODE = GMODE;
 	if (F == 0)
 		g->GFM = GFM;
-	if (C == 1)
-		g->GK = 0;
-	
+    if (C == 1) {
+        g->GK = 0;
+        g->f_GK = 0.0;
+    }
+
 	/*
 	 if (osc_env(GMODE) > 1) fprintf(stderr, "expt %d ", samples);
 	 */
@@ -2831,6 +2834,7 @@ int main(int argc, char **argv)
 					}
 					int i = 0;
 					if (read_data_file != NULL) {
+                        fprintf(stdout, "Read Data: %s\n", argv[2]);
 						fread(&i, 4, 1, read_data_file);
 						if (i == SND_MAGIC) {
 							// This is a NeXT sound file
